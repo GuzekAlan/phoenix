@@ -150,9 +150,6 @@ export default class Channel {
     })
   }
 
-  /**
-   * @private
-   */
   canPush(){ return this.socket.isConnected() && this.isJoined() }
 
   /**
@@ -236,6 +233,15 @@ export default class Channel {
   onMessage(_event, payload, _ref){ return payload }
 
   /**
+   * Used to update payload of join Push
+   *
+   * @param {Object | Function} payload
+   */
+  updateJoinPayload(payload){
+    this.joinPush.setPayload(closure(payload)) 
+  }
+
+  /**
    * @private
    */
   isMember(topic, event, payload, joinRef){
@@ -250,7 +256,7 @@ export default class Channel {
   }
 
   /**
-   * @private
+   * @returns {string}
    */
   joinRef(){ return this.joinPush.ref }
 

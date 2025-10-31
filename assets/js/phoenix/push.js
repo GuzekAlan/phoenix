@@ -58,6 +58,13 @@ export default class Push {
   }
 
   /**
+   * @param {Function} payload
+   */
+  setPayload(payload){
+    this.payload = payload
+  }
+
+  /**
    * @private
    */
   reset(){

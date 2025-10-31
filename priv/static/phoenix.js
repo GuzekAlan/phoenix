@@ -138,6 +138,12 @@ var Phoenix = (() => {
       return this;
     }
     /**
+     * @param {Function} payload
+     */
+    setPayload(payload) {
+      this.payload = payload;
+    }
+    /**
      * @private
      */
     reset() {
@@ -370,9 +376,6 @@ var Phoenix = (() => {
         return !(bind.event === event && (typeof ref === "undefined" || ref === bind.ref));
       });
     }
-    /**
-     * @private
-     */
     canPush() {
       return this.socket.isConnected() && this.isJoined();
     }
@@ -456,6 +459,14 @@ var Phoenix = (() => {
       return payload;
     }
     /**
+     * Used to update payload of join Push
+     *
+     * @param {Object | Function} payload
+     */
+    updateJoinPayload(payload) {
+      this.joinPush.setPayload(closure(payload));
+    }
+    /**
      * @private
      */
     isMember(topic, event, payload, joinRef) {
@@ -470,7 +481,7 @@ var Phoenix = (() => {
       }
     }
     /**
-     * @private
+     * @returns {string}
      */
     joinRef() {
       return this.joinPush.ref;

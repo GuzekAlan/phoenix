@@ -94,6 +94,12 @@ var Push = class {
     return this;
   }
   /**
+   * @param {Function} payload
+   */
+  setPayload(payload) {
+    this.payload = payload;
+  }
+  /**
    * @private
    */
   reset() {
@@ -326,9 +332,6 @@ var Channel = class {
       return !(bind.event === event && (typeof ref === "undefined" || ref === bind.ref));
     });
   }
-  /**
-   * @private
-   */
   canPush() {
     return this.socket.isConnected() && this.isJoined();
   }
@@ -412,6 +415,14 @@ var Channel = class {
     return payload;
   }
   /**
+   * Used to update payload of join Push
+   *
+   * @param {Object | Function} payload
+   */
+  updateJoinPayload(payload) {
+    this.joinPush.setPayload(closure(payload));
+  }
+  /**
    * @private
    */
   isMember(topic, event, payload, joinRef) {
@@ -426,7 +437,7 @@ var Channel = class {
     }
   }
   /**
-   * @private
+   * @returns {string}
    */
   joinRef() {
     return this.joinPush.ref;

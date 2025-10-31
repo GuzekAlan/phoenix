@@ -71,10 +71,7 @@ export default class Channel {
      * @param {integer} ref
      */
     off(event: string, ref: integer): void;
-    /**
-     * @private
-     */
-    private canPush;
+    canPush(): any;
     /**
      * Sends a message `event` to phoenix with the payload `payload`.
      * Phoenix receives this in the `handle_in(event, payload, socket)`
@@ -123,13 +120,19 @@ export default class Channel {
      */
     onMessage(_event: any, payload: Object, _ref: any): Object;
     /**
+     * Used to update payload of join Push
+     *
+     * @param {Object | Function} payload
+     */
+    updateJoinPayload(payload: Object | Function): void;
+    /**
      * @private
      */
     private isMember;
     /**
-     * @private
+     * @returns {string}
      */
-    private joinRef;
+    joinRef(): string;
     /**
      * @private
      */

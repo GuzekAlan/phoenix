@@ -31,6 +31,10 @@ export default class Push {
      */
     receive(status: any, callback: any): this;
     /**
+     * @param {Function} payload
+     */
+    setPayload(payload: Function): void;
+    /**
      * @private
      */
     private reset;
