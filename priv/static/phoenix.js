@@ -498,7 +498,10 @@ var Phoenix = (() => {
       this.joinPush.resend(timeout);
     }
     /**
-     * @private
+     * @param {string} event
+     * @param {Object} param 
+     * @param {string | undefined} ref
+     * @param {string | undefined} joinRef
      */
     trigger(event, payload, ref, joinRef) {
       let handledPayload = this.onMessage(event, payload, ref, joinRef);

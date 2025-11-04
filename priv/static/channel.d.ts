@@ -138,9 +138,12 @@ export default class Channel {
      */
     private rejoin;
     /**
-     * @private
+     * @param {string} event
+     * @param {Object} param
+     * @param {string | undefined} ref
+     * @param {string | undefined} joinRef
      */
-    private trigger;
+    trigger(event: string, payload: any, ref: string | undefined, joinRef: string | undefined): void;
     /**
      * @private
      */
