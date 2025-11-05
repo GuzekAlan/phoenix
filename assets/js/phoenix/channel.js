@@ -233,6 +233,15 @@ export default class Channel {
   onMessage(_event, payload, _ref){ return payload }
 
   /**
+   * Overridable message filter
+   * @param {string} _event
+   * @param {any} _payload
+   * @param {number | undefined} _ref
+   * @param {any} _bind
+   */
+  filterMessage(_event, _payload, _ref, _bind){return true}
+
+  /**
    * Used to update payload of join Push
    *
    * @param {Object | Function} payload
@@ -280,7 +289,7 @@ export default class Channel {
     let handledPayload = this.onMessage(event, payload, ref, joinRef)
     if(payload && !handledPayload){ throw new Error("channel onMessage callbacks must return the payload, modified or unmodified") }
 
-    let eventBindings = this.bindings.filter(bind => bind.event === event)
+    let eventBindings = this.bindings.filter(bind => bind.event === event).filter(bind => this.filterMessage(event, payload, ref, bind))
 
     for(let i = 0; i < eventBindings.length; i++){
       let bind = eventBindings[i]

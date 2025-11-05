@@ -120,6 +120,14 @@ export default class Channel {
      */
     onMessage(_event: any, payload: Object, _ref: any): Object;
     /**
+     * Overridable message filter
+     * @param {string} _event
+     * @param {any} _payload
+     * @param {number | undefined} _ref
+     * @param {any} _bind
+     */
+    filterMessage(_event: string, _payload: any, _ref: number | undefined, _bind: any): boolean;
+    /**
      * Used to update payload of join Push
      *
      * @param {Object | Function} payload
