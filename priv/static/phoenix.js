@@ -1089,6 +1089,7 @@ var Phoenix = (() => {
   // js/phoenix/socket.js
   var Socket = class {
     constructor(endPoint, opts = {}) {
+      var _a;
       this.stateChangeCallbacks = { open: [], close: [], error: [], message: [] };
       this.channels = [];
       this.sendBuffer = [];
@@ -1106,6 +1107,7 @@ var Phoenix = (() => {
       this.disconnecting = false;
       this.binaryType = opts.binaryType || "arraybuffer";
       this.connectClock = 1;
+      this.heartbeatEnabled = (_a = opts.heartbeatEnabled) != null ? _a : true;
       if (this.transport !== LongPoll) {
         this.encode = opts.encode || this.defaultEncoder;
         this.decode = opts.decode || this.defaultDecoder;
@@ -1318,6 +1320,9 @@ var Phoenix = (() => {
       if (!this.isConnected()) {
         return false;
       }
+      if (!this.heartbeatEnabled) {
+        return false;
+      }
       let ref = this.makeRef();
       let startTime = Date.now();
       this.push({ topic: "phoenix", event: "heartbeat", payload: {}, ref });
@@ -1423,7 +1428,7 @@ var Phoenix = (() => {
       }
     }
     resetHeartbeat() {
-      if (this.conn && this.conn.skipHeartbeat) {
+      if (this.conn && this.conn.skipHeartbeat || !this.heartbeatEnabled) {
         return;
       }
       this.pendingHeartbeatRef = null;
@@ -1616,7 +1621,7 @@ var Phoenix = (() => {
     onConnMessage(rawMessage) {
       this.decode(rawMessage.data, (msg) => {
         let { topic, event, payload, ref, join_ref } = msg;
-        if (ref && ref === this.pendingHeartbeatRef) {
+        if (ref && ref === this.pendingHeartbeatRef && this.heartbeatEnabled) {
           this.clearHeartbeats();
           this.pendingHeartbeatRef = null;
           this.heartbeatTimer = setTimeout(() => this.sendHeartbeat(), this.heartbeatIntervalMs);

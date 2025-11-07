@@ -54,6 +54,7 @@ import Timer from "./timer"
  *
  * Defaults `DEFAULT_TIMEOUT`
  * @param {number} [opts.heartbeatIntervalMs] - The millisec interval to send a heartbeat message
+ * @param {boolean} [opts.heartbeatEnabled] - Whether to enable heartbeat messages.
  * @param {Function} [opts.reconnectAfterMs] - The optional function that returns the
  * socket reconnect interval, in milliseconds.
  *
@@ -129,6 +130,7 @@ export default class Socket {
     this.disconnecting = false
     this.binaryType = opts.binaryType || "arraybuffer"
     this.connectClock = 1
+    this.heartbeatEnabled = opts.heartbeatEnabled ?? true
     if(this.transport !== LongPoll){
       this.encode = opts.encode || this.defaultEncoder
       this.decode = opts.decode || this.defaultDecoder
@@ -335,6 +337,7 @@ export default class Socket {
    */
   ping(callback){
     if(!this.isConnected()){ return false }
+    if(!this.heartbeatEnabled){ return false }
     let ref = this.makeRef()
     let startTime = Date.now()
     this.push({topic: "phoenix", event: "heartbeat", payload: {}, ref: ref})
@@ -446,7 +449,7 @@ export default class Socket {
   }
 
   resetHeartbeat(){
-    if(this.conn && this.conn.skipHeartbeat){ return }
+    if(this.conn && this.conn.skipHeartbeat || !this.heartbeatEnabled){ return }
     this.pendingHeartbeatRef = null
     this.clearHeartbeats()
     this.heartbeatTimer = setTimeout(() => this.sendHeartbeat(), this.heartbeatIntervalMs)
@@ -636,7 +639,7 @@ export default class Socket {
   onConnMessage(rawMessage){
     this.decode(rawMessage.data, msg => {
       let {topic, event, payload, ref, join_ref} = msg
-      if(ref && ref === this.pendingHeartbeatRef){
+      if(ref && ref === this.pendingHeartbeatRef && this.heartbeatEnabled){
         this.clearHeartbeats()
         this.pendingHeartbeatRef = null
         this.heartbeatTimer = setTimeout(() => this.sendHeartbeat(), this.heartbeatIntervalMs)

@@ -32,6 +32,7 @@
  *
  * Defaults `DEFAULT_TIMEOUT`
  * @param {number} [opts.heartbeatIntervalMs] - The millisec interval to send a heartbeat message
+ * @param {boolean} [opts.heartbeatEnabled] - Whether to enable heartbeat messages.
  * @param {Function} [opts.reconnectAfterMs] - The optional function that returns the
  * socket reconnect interval, in milliseconds.
  *
@@ -112,6 +113,7 @@ export default class Socket {
     disconnecting: boolean;
     binaryType: any;
     connectClock: number;
+    heartbeatEnabled: any;
     encode: any;
     decode: any;
     heartbeatIntervalMs: any;
