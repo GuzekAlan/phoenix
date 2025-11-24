@@ -73,7 +73,7 @@ export default class Channel {
 
   /**
    * Join the channel
-   * @param {integer} timeout
+   * @param {number} timeout
    * @returns {Push}
    */
   join(timeout = this.timeout){
@@ -118,7 +118,7 @@ export default class Channel {
    *
    * @param {string} event
    * @param {Function} callback
-   * @returns {integer} ref
+   * @returns {number} ref
    */
   on(event, callback){
     let ref = this.bindingRef++
@@ -142,7 +142,7 @@ export default class Channel {
    * channel.off("event")
    *
    * @param {string} event
-   * @param {integer} ref
+   * @param {number} ref
    */
   off(event, ref){
     this.bindings = this.bindings.filter((bind) => {
@@ -197,7 +197,7 @@ export default class Channel {
    * @example
    * channel.leave().receive("ok", () => alert("left!") )
    *
-   * @param {integer} timeout
+   * @param {number} timeout
    * @returns {Push}
    */
   leave(timeout = this.timeout){
@@ -227,7 +227,7 @@ export default class Channel {
    * Must return the payload, modified or unmodified
    * @param {string} event
    * @param {Object} payload
-   * @param {integer} ref
+   * @param {number} ref
    * @returns {Object}
    */
   onMessage(_event, payload, _ref){ return payload }

@@ -20,10 +20,10 @@ export default class Channel {
     rejoinTimer: Timer;
     /**
      * Join the channel
-     * @param {integer} timeout
+     * @param {number} timeout
      * @returns {Push}
      */
-    join(timeout?: integer): Push;
+    join(timeout?: number): Push;
     /**
      * Hook into channel close
      * @param {Function} callback
@@ -33,7 +33,7 @@ export default class Channel {
      * Hook into channel errors
      * @param {Function} callback
      */
-    onError(callback: Function): integer;
+    onError(callback: Function): number;
     /**
      * Subscribes on channel events
      *
@@ -49,9 +49,9 @@ export default class Channel {
      *
      * @param {string} event
      * @param {Function} callback
-     * @returns {integer} ref
+     * @returns {number} ref
      */
-    on(event: string, callback: Function): integer;
+    on(event: string, callback: Function): number;
     /**
      * Unsubscribes off of channel events
      *
@@ -68,9 +68,9 @@ export default class Channel {
      * channel.off("event")
      *
      * @param {string} event
-     * @param {integer} ref
+     * @param {number} ref
      */
-    off(event: string, ref: integer): void;
+    off(event: string, ref: number): void;
     canPush(): any;
     /**
      * Sends a message `event` to phoenix with the payload `payload`.
@@ -102,10 +102,10 @@ export default class Channel {
      * @example
      * channel.leave().receive("ok", () => alert("left!") )
      *
-     * @param {integer} timeout
+     * @param {number} timeout
      * @returns {Push}
      */
-    leave(timeout?: integer): Push;
+    leave(timeout?: number): Push;
     /**
      * Overridable message hook
      *
@@ -115,7 +115,7 @@ export default class Channel {
      * Must return the payload, modified or unmodified
      * @param {string} event
      * @param {Object} payload
-     * @param {integer} ref
+     * @param {number} ref
      * @returns {Object}
      */
     onMessage(_event: any, payload: Object, _ref: any): Object;
