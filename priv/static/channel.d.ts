@@ -68,9 +68,9 @@ export default class Channel {
      * channel.off("event")
      *
      * @param {string} event
-     * @param {number} ref
+     * @param {number | undefined} ref
      */
-    off(event: string, ref: number): void;
+    off(event: string, ref: number | undefined): void;
     canPush(): any;
     /**
      * Sends a message `event` to phoenix with the payload `payload`.

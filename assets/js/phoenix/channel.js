@@ -142,7 +142,7 @@ export default class Channel {
    * channel.off("event")
    *
    * @param {string} event
-   * @param {number} ref
+   * @param {number | undefined} ref
    */
   off(event, ref){
     this.bindings = this.bindings.filter((bind) => {
