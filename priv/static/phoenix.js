@@ -1,3 +1,4 @@
+"use strict";
 var Phoenix = (() => {
   var __defProp = Object.defineProperty;
   var __getOwnPropDesc = Object.getOwnPropertyDescriptor;

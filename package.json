@@ -51,6 +51,7 @@
     "test": "jest",
     "test.coverage": "jest --coverage",
     "test.watch": "jest --watch",
-    "docs": "documentation build assets/js/phoenix/index.js -f html -o doc/js"
+    "docs": "documentation build assets/js/phoenix/index.js -f html -o doc/js",
+    "tsc": "tsc"
   }
 }

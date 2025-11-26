@@ -256,8 +256,15 @@ defmodule Phoenix.MixProject do
   defp aliases do
     [
       docs: ["docs", &generate_js_docs/1],
-      "assets.build": ["esbuild module", "esbuild cdn", "esbuild cdn_min", "esbuild main"],
+      "assets.build": [
+        "esbuild module",
+        "esbuild cdn",
+        "esbuild cdn_min",
+        "esbuild main",
+        &generate_types/1
+      ],
       "assets.watch": "esbuild module --watch",
+      "types.build": &generate_types/1,
       "archive.build": &raise_on_archive_build/1,
       # copy core_components before compiling / publishing
       compile: [&copy_core_components/1, "compile"],
@@ -268,6 +275,10 @@ defmodule Phoenix.MixProject do
   defp generate_js_docs(_) do
     Mix.Task.run("app.start")
     System.cmd("npm", ["run", "docs"])
+  end
+
+  defp generate_types(_) do
+    System.cmd("npm", ["run", "tsc"])
   end
 
   defp raise_on_archive_build(_) do
