@@ -7,9 +7,16 @@
   "main": "./priv/static/phoenix.cjs.js",
   "unpkg": "./priv/static/phoenix.min.js",
   "jsdelivr": "./priv/static/phoenix.min.js",
+  "types": "./priv/static/index.d.ts",
   "exports": {
-    "import": "./priv/static/phoenix.mjs",
-    "require": "./priv/static/phoenix.cjs.js"
+    "import": {
+      "types": "./priv/static/index.d.ts",
+      "default": "./priv/static/phoenix.mjs"
+    },
+    "require": {
+      "types": "./priv/static/index.d.ts",
+      "default": "./priv/static/phoenix.cjs.js"
+    }
   },
   "repository": {
     "type": "git",
@@ -20,6 +27,7 @@
     "README.md",
     "LICENSE.md",
     "package.json",
+    "tsconfig.json",
     "priv/static/*",
     "assets/js/phoenix/*"
   ],
@@ -35,7 +43,9 @@
     "jest": "^30.0.0",
     "jest-environment-jsdom": "^30.0.0",
     "jsdom": "^27.0.0",
-    "mock-socket": "^9.3.1"
+    "mock-socket": "^9.3.1",
+    "tsc": "^2.0.4",
+    "typescript": "^5.9.3"
   },
   "scripts": {
     "test": "jest",
