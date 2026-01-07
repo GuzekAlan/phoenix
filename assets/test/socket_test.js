@@ -1,4 +1,4 @@
-import {jest} from "@jest/globals"
+import {describe, expect, jest} from "@jest/globals"
 import {WebSocket, Server as WebSocketServer} from "mock-socket"
 import {encode} from "./serializer"
 import {Socket, LongPoll} from "../js/phoenix"
@@ -476,6 +476,57 @@ describe("with transports", function (){
 
       socket.sendHeartbeat()
       expect(sendSpy).not.toHaveBeenCalledWith(data)
+    })
+  })
+
+  describe("heartbeatCallback", () => {
+    beforeEach(function (){
+      socket = new Socket("/socket")
+      socket.connect()
+      socket.conn.readyState = 1 // open
+    })
+
+    it("timeout", () => {
+      const spy = jest.fn()
+      socket.onHeartbeat(spy)
+      socket.sendHeartbeat()
+      socket.heartbeatTimeout()
+      expect(spy).toHaveBeenCalledWith("timeout")
+    })
+
+    it("sent", () => {
+      const spy = jest.fn()
+      socket.onHeartbeat(spy)
+      socket.sendHeartbeat()
+      expect(spy).toHaveBeenCalledWith("sent")
+    })
+
+    it("disconnected", () => {
+      socket.conn.readyState = 42 // closed
+      const spy = jest.fn()
+      socket.onHeartbeat(spy)
+      socket.sendHeartbeat()
+      expect(spy).toHaveBeenCalledWith("disconnected")
+    })
+
+    it("ok", () => {
+      const spy = jest.fn()
+      socket.onHeartbeat(spy)
+      socket.sendHeartbeat()
+      const ref = socket.pendingHeartbeatRef
+      const data = {ref, payload: {status: "ok"}}
+      socket.conn.onmessage({data: encode(data)})
+      expect(spy).toHaveBeenCalledWith("ok")
+    })
+
+    it("error", () => {
+      const spy = jest.fn()
+      socket.onHeartbeat(spy)
+      socket.sendHeartbeat()
+      const ref = socket.pendingHeartbeatRef
+      const data = {ref, payload: {status: "error"}}
+      socket.conn.onmessage({data: encode(data)})
+      expect(spy).toHaveBeenCalledWith("error")
     })
   })
 

@@ -1,5 +1,5 @@
 /**
-* @import { Encode, Decode, Message, Vsn, SocketTransport, Params, SocketOnOpen, SocketOnClose, SocketOnError, SocketOnMessage, SocketOptions, SocketStateChangeCallbacks } from "./types"
+* @import { Encode, Decode, Message, Vsn, SocketTransport, Params, SocketOnOpen, SocketOnClose, SocketOnError, SocketOnMessage, SocketOptions, SocketStateChangeCallbacks, HeartbeatCallback } from "./types"
 */
 export default class Socket {
     /** Initializes the Socket *
@@ -59,6 +59,10 @@ export default class Socket {
     decode: Decode<void>;
     /** @type{number} */
     heartbeatIntervalMs: number;
+    /** @type{boolean} */
+    autoSendHeartbeat: boolean;
+    /** @type{HeartbeatCallback} */
+    heartbeatCallback: HeartbeatCallback;
     /** @type{(tries: number) => number} */
     rejoinAfterMs: (tries: number) => number;
     /** @type{(tries: number) => number} */
@@ -83,8 +87,6 @@ export default class Socket {
     reconnectTimer: Timer;
     /** @type{string | undefined} */
     authToken: string | undefined;
-    /** @type{boolean} */
-    autoSendHeartbeat: boolean;
     /**
      * Returns the LongPoll transport reference
      */
@@ -165,6 +167,12 @@ export default class Socket {
      * @returns {string}
      */
     onMessage(callback: SocketOnMessage): string;
+    /**
+     * Sets a callback that receives lifecycle events for internal heartbeat messages.
+     * Useful for instrumenting connection health (e.g. sent/ok/timeout/disconnected).
+     * @param {HeartbeatCallback} callback
+     */
+    onHeartbeat(callback: HeartbeatCallback): void;
     /**
      * Pings the server and invokes the callback with the RTT in milliseconds
      * @param {(timeDelta: number) => void} callback
@@ -252,6 +260,7 @@ import Channel from "./channel";
 import type { SocketTransport } from "./types";
 import type { Encode } from "./types";
 import type { Decode } from "./types";
+import type { HeartbeatCallback } from "./types";
 import type { Params } from "./types";
 import type { Vsn } from "./types";
 import Timer from "./timer";

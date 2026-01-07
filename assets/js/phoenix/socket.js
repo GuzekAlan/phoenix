@@ -21,7 +21,7 @@ import Serializer from "./serializer"
 import Timer from "./timer"
 
 /**
-* @import { Encode, Decode, Message, Vsn, SocketTransport, Params, SocketOnOpen, SocketOnClose, SocketOnError, SocketOnMessage, SocketOptions, SocketStateChangeCallbacks } from "./types"
+* @import { Encode, Decode, Message, Vsn, SocketTransport, Params, SocketOnOpen, SocketOnClose, SocketOnError, SocketOnMessage, SocketOptions, SocketStateChangeCallbacks, HeartbeatCallback } from "./types"
 */
 
 export default class Socket {
@@ -116,6 +116,10 @@ export default class Socket {
     }
     /** @type{number} */
     this.heartbeatIntervalMs = opts.heartbeatIntervalMs || 30000
+    /** @type{boolean} */
+    this.autoSendHeartbeat = opts.autoSendHeartbeat ?? true
+    /** @type{HeartbeatCallback} */
+    this.heartbeatCallback = opts.heartbeatCallback ?? (() => {});
     /** @type{(tries: number) => number} */
     this.rejoinAfterMs = (tries) => {
       if(opts.rejoinAfterMs){
@@ -162,8 +166,6 @@ export default class Socket {
     }, this.reconnectAfterMs)
     /** @type{string | undefined} */
     this.authToken = opts.authToken
-    /** @type{boolean} */
-    this.autoSendHeartbeat = opts.autoSendHeartbeat ?? true
   }
 
   /**
@@ -313,6 +315,15 @@ export default class Socket {
   }
 
   /**
+   * Sets a callback that receives lifecycle events for internal heartbeat messages.
+   * Useful for instrumenting connection health (e.g. sent/ok/timeout/disconnected).
+   * @param {HeartbeatCallback} callback
+   */
+  onHeartbeat(callback) {
+    this.heartbeatCallback = callback;
+  }
+
+  /**
    * Pings the server and invokes the callback with the RTT in milliseconds
    * @param {(timeDelta: number) => void} callback
    *
@@ -429,6 +440,11 @@ export default class Socket {
     if(this.pendingHeartbeatRef){
       this.pendingHeartbeatRef = null
       if(this.hasLogger()){ this.log("transport", "heartbeat timeout. Attempting to re-establish connection") }
+      try {
+        this.heartbeatCallback("timeout")
+      } catch (e) {
+        this.log('error', 'error in heartbeat callback', e)
+      }
       this.triggerChanError()
       this.closeWasClean = false
       this.teardown(() => this.reconnectTimer.scheduleTimeout(), WS_CLOSE_NORMAL, "heartbeat timeout")
@@ -613,9 +629,22 @@ export default class Socket {
   }
 
   sendHeartbeat(){
-    if(this.pendingHeartbeatRef && !this.isConnected()){ return }
+    if (!this.isConnected()) {
+      try {
+        this.heartbeatCallback("disconnected")
+      } catch (e) {
+        this.log('error', 'error in heartbeat callback', e)
+      }
+      return
+    }
+    if(this.pendingHeartbeatRef){ return }
     this.pendingHeartbeatRef = this.makeRef()
     this.push({topic: "phoenix", event: "heartbeat", payload: {}, ref: this.pendingHeartbeatRef})
+    try {
+      this.heartbeatCallback("sent")
+    } catch (e) {
+      this.log('error', 'error in heartbeat callback', e)
+    }
     this.heartbeatTimeoutTimer = setTimeout(() => this.heartbeatTimeout(), this.heartbeatIntervalMs)
   }
 
@@ -634,6 +663,11 @@ export default class Socket {
       let {topic, event, payload, ref, join_ref} = msg
       if(ref && ref === this.pendingHeartbeatRef){
         this.clearHeartbeats()
+        try {
+          this.heartbeatCallback(payload.status === "ok" ? "ok" : "error")
+        } catch (e) {
+          this.log('error', 'error in heartbeat callback', e)
+        }
         this.pendingHeartbeatRef = null
         if (this.autoSendHeartbeat) {
           this.heartbeatTimer = setTimeout(() => this.sendHeartbeat(), this.heartbeatIntervalMs)

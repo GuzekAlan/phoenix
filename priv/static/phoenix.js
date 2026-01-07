@@ -1146,7 +1146,7 @@ var Phoenix = (() => {
      * @param {SocketOptions} [opts] - Optional configuration
      */
     constructor(endPoint, opts = {}) {
-      var _a;
+      var _a, _b;
       this.stateChangeCallbacks = { open: [], close: [], error: [], message: [] };
       this.channels = [];
       this.sendBuffer = [];
@@ -1202,6 +1202,9 @@ var Phoenix = (() => {
         });
       }
       this.heartbeatIntervalMs = opts.heartbeatIntervalMs || 3e4;
+      this.autoSendHeartbeat = (_a = opts.autoSendHeartbeat) != null ? _a : true;
+      this.heartbeatCallback = (_b = opts.heartbeatCallback) != null ? _b : () => {
+      };
       this.rejoinAfterMs = (tries) => {
         if (opts.rejoinAfterMs) {
           return opts.rejoinAfterMs(tries);
@@ -1238,7 +1241,6 @@ var Phoenix = (() => {
         this.teardown(() => this.connect());
       }, this.reconnectAfterMs);
       this.authToken = opts.authToken;
-      this.autoSendHeartbeat = (_a = opts.autoSendHeartbeat) != null ? _a : true;
     }
     /**
      * Returns the LongPoll transport reference
@@ -1390,6 +1392,14 @@ var Phoenix = (() => {
       return ref;
     }
     /**
+     * Sets a callback that receives lifecycle events for internal heartbeat messages.
+     * Useful for instrumenting connection health (e.g. sent/ok/timeout/disconnected).
+     * @param {HeartbeatCallback} callback
+     */
+    onHeartbeat(callback) {
+      this.heartbeatCallback = callback;
+    }
+    /**
      * Pings the server and invokes the callback with the RTT in milliseconds
      * @param {(timeDelta: number) => void} callback
      *
@@ -1502,6 +1512,11 @@ var Phoenix = (() => {
         this.pendingHeartbeatRef = null;
         if (this.hasLogger()) {
           this.log("transport", "heartbeat timeout. Attempting to re-establish connection");
+        }
+        try {
+          this.heartbeatCallback("timeout");
+        } catch (e) {
+          this.log("error", "error in heartbeat callback", e);
         }
         this.triggerChanError();
         this.closeWasClean = false;
@@ -1690,11 +1705,24 @@ var Phoenix = (() => {
       return this.ref.toString();
     }
     sendHeartbeat() {
-      if (this.pendingHeartbeatRef && !this.isConnected()) {
+      if (!this.isConnected()) {
+        try {
+          this.heartbeatCallback("disconnected");
+        } catch (e) {
+          this.log("error", "error in heartbeat callback", e);
+        }
+        return;
+      }
+      if (this.pendingHeartbeatRef) {
         return;
       }
       this.pendingHeartbeatRef = this.makeRef();
       this.push({ topic: "phoenix", event: "heartbeat", payload: {}, ref: this.pendingHeartbeatRef });
+      try {
+        this.heartbeatCallback("sent");
+      } catch (e) {
+        this.log("error", "error in heartbeat callback", e);
+      }
       this.heartbeatTimeoutTimer = setTimeout(() => this.heartbeatTimeout(), this.heartbeatIntervalMs);
     }
     flushSendBuffer() {
@@ -1711,6 +1739,11 @@ var Phoenix = (() => {
         let { topic, event, payload, ref, join_ref } = msg;
         if (ref && ref === this.pendingHeartbeatRef) {
           this.clearHeartbeats();
+          try {
+            this.heartbeatCallback(payload.status === "ok" ? "ok" : "error");
+          } catch (e) {
+            this.log("error", "error in heartbeat callback", e);
+          }
           this.pendingHeartbeatRef = null;
           if (this.autoSendHeartbeat) {
             this.heartbeatTimer = setTimeout(() => this.sendHeartbeat(), this.heartbeatIntervalMs);

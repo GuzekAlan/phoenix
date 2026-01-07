@@ -137,6 +137,14 @@ export type SocketStateChangeCallbacks = ({
 /**
  * SOCKET
  */
+export type HeartbeatStatus = "sent" | "ok" | "error" | "timeout" | "disconnected";
+/**
+ * SOCKET
+ */
+export type HeartbeatCallback = (status: HeartbeatStatus) => void;
+/**
+ * SOCKET
+ */
 export type SocketOptions = {
     /**
      * - The Websocket Transport, for example WebSocket or Phoenix.LongPoll.
@@ -178,6 +186,10 @@ export type SocketOptions = {
      * - The millisec interval to send a heartbeat message
      */
     heartbeatIntervalMs?: number | undefined;
+    /**
+     * - The optional function called after heartbeat status change.
+     */
+    heartbeatCallback?: HeartbeatCallback | undefined;
     /**
      * - The optional function that returns the
      * socket reconnect interval, in milliseconds.

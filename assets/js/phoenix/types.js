@@ -88,6 +88,8 @@
  *   error: [string, SocketOnError][]
  *   message: [string, SocketOnMessage][]
  * })} SocketStateChangeCallbacks
+ * @typedef {'sent' | 'ok' | 'error' | 'timeout' | 'disconnected'} HeartbeatStatus
+ * @typedef {(status: HeartbeatStatus) => void} HeartbeatCallback
  *
  *
  *
@@ -113,7 +115,10 @@
  *
  * @property {number} [timeout] - The default timeout in milliseconds to trigger push timeouts.
  * Defaults `DEFAULT_TIMEOUT`
+ *
  * @property {number} [heartbeatIntervalMs] - The millisec interval to send a heartbeat message
+ *
+ * @property {HeartbeatCallback} [heartbeatCallback] - The optional function called after heartbeat status change.
  *
  * @property {(tries: number) => number} [reconnectAfterMs] - The optional function that returns the
  * socket reconnect interval, in milliseconds.
