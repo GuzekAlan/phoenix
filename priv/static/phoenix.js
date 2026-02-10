@@ -1257,8 +1257,10 @@ var Phoenix = (() => {
           this.teardown();
           return;
         }
-        if (opts.beforeReconnect) yield opts.beforeReconnect();
-        this.teardown(() => this.connect());
+        this.teardown(() => __async(this, null, function* () {
+          if (opts.beforeReconnect) yield opts.beforeReconnect();
+          this.connect();
+        }));
       }), this.reconnectAfterMs);
       this.authToken = opts.authToken;
     }

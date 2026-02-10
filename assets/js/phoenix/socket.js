@@ -164,8 +164,11 @@ export default class Socket {
         this.teardown()
         return
       }
-      if(opts.beforeReconnect) await opts.beforeReconnect()
-      this.teardown(() => this.connect())
+      
+      this.teardown(async () => {
+        if(opts.beforeReconnect) await opts.beforeReconnect()
+        this.connect()
+      })
     }, this.reconnectAfterMs)
     /** @type{string | undefined} */
     this.authToken = opts.authToken

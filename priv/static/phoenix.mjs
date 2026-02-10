@@ -1204,8 +1204,10 @@ var Socket = class {
         this.teardown();
         return;
       }
-      if (opts.beforeReconnect) await opts.beforeReconnect();
-      this.teardown(() => this.connect());
+      this.teardown(async () => {
+        if (opts.beforeReconnect) await opts.beforeReconnect();
+        this.connect();
+      });
     }, this.reconnectAfterMs);
     this.authToken = opts.authToken;
   }
