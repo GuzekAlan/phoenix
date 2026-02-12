@@ -8,15 +8,15 @@ import {
   TRANSPORTS,
   WS_CLOSE_NORMAL,
   AUTH_TOKEN_PREFIX,
-} from "./constants";
+} from "./constants"
 
-import { closure } from "./utils";
+import {closure} from "./utils"
 
-import Ajax from "./ajax";
-import Channel from "./channel";
-import LongPoll from "./longpoll";
-import Serializer from "./serializer";
-import Timer from "./timer";
+import Ajax from "./ajax"
+import Channel from "./channel"
+import LongPoll from "./longpoll"
+import Serializer from "./serializer"
+import Timer from "./timer"
 
 /**
  * @import { Encode, Decode, Message, Vsn, SocketTransport, Params, SocketOnOpen, SocketOnClose, SocketOnError, SocketOnMessage, SocketOptions, SocketStateChangeCallbacks, HeartbeatCallback } from "./types"
@@ -33,153 +33,153 @@ export default class Socket {
    *                                               `"/socket"` (inherited host & protocol)
    * @param {SocketOptions} [opts] - Optional configuration
    */
-  constructor(endPoint, opts = {}) {
+  constructor(endPoint, opts = {}){
     /** @type{SocketStateChangeCallbacks} */
-    this.stateChangeCallbacks = { open: [], close: [], error: [], message: [] };
+    this.stateChangeCallbacks = {open: [], close: [], error: [], message: []}
     /** @type{Channel[]} */
-    this.channels = [];
+    this.channels = []
     /** @type{(() => void)[]} */
-    this.sendBuffer = [];
+    this.sendBuffer = []
     /** @type{number} */
-    this.ref = 0;
+    this.ref = 0
     /** @type{?string} */
-    this.fallbackRef = null;
+    this.fallbackRef = null
     /** @type{number} */
-    this.timeout = opts.timeout || DEFAULT_TIMEOUT;
+    this.timeout = opts.timeout || DEFAULT_TIMEOUT
     /** @type{SocketTransport} */
-    this.transport = opts.transport || global.WebSocket || LongPoll;
+    this.transport = opts.transport || global.WebSocket || LongPoll
     /** @type{InstanceType<SocketTransport> | undefined | null} */
-    this.conn = undefined;
+    this.conn = undefined
     /** @type{boolean} */
-    this.primaryPassedHealthCheck = false;
+    this.primaryPassedHealthCheck = false
     /** @type{number | undefined} */
-    this.longPollFallbackMs = opts.longPollFallbackMs;
+    this.longPollFallbackMs = opts.longPollFallbackMs
     /** @type{ReturnType<typeof setTimeout>} */
-    this.fallbackTimer = null;
+    this.fallbackTimer = null
     /** @type{Storage} */
     this.sessionStore =
-      opts.sessionStorage || (global && global.sessionStorage);
+      opts.sessionStorage || (global && global.sessionStorage)
     /** @type{number} */
-    this.establishedConnections = 0;
+    this.establishedConnections = 0
     /** @type{Encode<void>} */
-    this.defaultEncoder = Serializer.encode.bind(Serializer);
+    this.defaultEncoder = Serializer.encode.bind(Serializer)
     /** @type{Decode<void>} */
-    this.defaultDecoder = Serializer.decode.bind(Serializer);
+    this.defaultDecoder = Serializer.decode.bind(Serializer)
     /** @type{boolean} */
-    this.closeWasClean = false;
+    this.closeWasClean = false
     /** @type{boolean} */
-    this.disconnecting = false;
+    this.disconnecting = false
     /** @type{BinaryType} */
-    this.binaryType = opts.binaryType || "arraybuffer";
+    this.binaryType = opts.binaryType || "arraybuffer"
     /** @type{number} */
-    this.connectClock = 1;
+    this.connectClock = 1
     /** @type{boolean} */
-    this.pageHidden = false;
+    this.pageHidden = false
     /** @type{Encode<void>} */
-    this.encode = undefined;
+    this.encode = undefined
     /** @type{Decode<void>} */
-    this.decode = undefined;
-    if (this.transport !== LongPoll) {
-      this.encode = opts.encode || this.defaultEncoder;
-      this.decode = opts.decode || this.defaultDecoder;
+    this.decode = undefined
+    if(this.transport !== LongPoll){
+      this.encode = opts.encode || this.defaultEncoder
+      this.decode = opts.decode || this.defaultDecoder
     } else {
-      this.encode = this.defaultEncoder;
-      this.decode = this.defaultDecoder;
+      this.encode = this.defaultEncoder
+      this.decode = this.defaultDecoder
     }
     /** @type{number | null} */
-    let awaitingConnectionOnPageShow = null;
-    if (phxWindow && phxWindow.addEventListener) {
+    let awaitingConnectionOnPageShow = null
+    if(phxWindow && phxWindow.addEventListener){
       phxWindow.addEventListener("pagehide", (_e) => {
-        if (this.conn) {
-          this.disconnect();
-          awaitingConnectionOnPageShow = this.connectClock;
+        if(this.conn){
+          this.disconnect()
+          awaitingConnectionOnPageShow = this.connectClock
         }
-      });
+      })
       phxWindow.addEventListener("pageshow", (_e) => {
-        if (awaitingConnectionOnPageShow === this.connectClock) {
-          awaitingConnectionOnPageShow = null;
-          this.connect();
+        if(awaitingConnectionOnPageShow === this.connectClock){
+          awaitingConnectionOnPageShow = null
+          this.connect()
         }
-      });
+      })
       phxWindow.addEventListener("visibilitychange", () => {
-        if (document.visibilityState === "hidden") {
-          this.pageHidden = true;
+        if(document.visibilityState === "hidden"){
+          this.pageHidden = true
         } else {
-          this.pageHidden = false;
+          this.pageHidden = false
           // reconnect immediately
-          if (!this.isConnected() && !this.closeWasClean) {
-            this.teardown(() => this.connect());
+          if(!this.isConnected() && !this.closeWasClean){
+            this.teardown(() => this.connect())
           }
         }
-      });
+      })
     }
     /** @type{number} */
-    this.heartbeatIntervalMs = opts.heartbeatIntervalMs || 30000;
+    this.heartbeatIntervalMs = opts.heartbeatIntervalMs || 30000
     /** @type{boolean} */
-    this.autoSendHeartbeat = opts.autoSendHeartbeat ?? true;
+    this.autoSendHeartbeat = opts.autoSendHeartbeat ?? true
     /** @type{HeartbeatCallback} */
-    this.heartbeatCallback = opts.heartbeatCallback ?? (() => {});
+    this.heartbeatCallback = opts.heartbeatCallback ?? (() => {})
     /** @type{(tries: number) => number} */
     this.rejoinAfterMs = (tries) => {
-      if (opts.rejoinAfterMs) {
-        return opts.rejoinAfterMs(tries);
+      if(opts.rejoinAfterMs){
+        return opts.rejoinAfterMs(tries)
       } else {
-        return [1000, 2000, 5000][tries - 1] || 10000;
+        return [1000, 2000, 5000][tries - 1] || 10000
       }
-    };
+    }
     /** @type{(tries: number) => number} */
     this.reconnectAfterMs = (tries) => {
-      if (opts.reconnectAfterMs) {
-        return opts.reconnectAfterMs(tries);
+      if(opts.reconnectAfterMs){
+        return opts.reconnectAfterMs(tries)
       } else {
-        return [10, 50, 100, 150, 200, 250, 500, 1000, 2000][tries - 1] || 5000;
+        return [10, 50, 100, 150, 200, 250, 500, 1000, 2000][tries - 1] || 5000
       }
-    };
+    }
     /** @type{((kind: string, msg: string, data: any) => void) | null} */
-    this.logger = opts.logger || null;
-    if (!this.logger && opts.debug) {
+    this.logger = opts.logger || null
+    if(!this.logger && opts.debug){
       this.logger = (kind, msg, data) => {
-        console.log(`${kind}: ${msg}`, data);
-      };
+        console.log(`${kind}: ${msg}`, data)
+      }
     }
     /** @type{number} */
-    this.longpollerTimeout = opts.longpollerTimeout || 20000;
+    this.longpollerTimeout = opts.longpollerTimeout || 20000
     /** @type{() => Params} */
-    this.params = closure(opts.params || {});
+    this.params = closure(opts.params || {})
     /** @type{string} */
-    this.endPoint = `${endPoint}/${TRANSPORTS.websocket}`;
+    this.endPoint = `${endPoint}/${TRANSPORTS.websocket}`
     /** @type{Vsn} */
-    this.vsn = opts.vsn || DEFAULT_VSN;
+    this.vsn = opts.vsn || DEFAULT_VSN
     /** @type{ReturnType<typeof setTimeout>} */
-    this.heartbeatTimeoutTimer = null;
+    this.heartbeatTimeoutTimer = null
     /** @type{ReturnType<typeof setTimeout>} */
-    this.heartbeatTimer = null;
+    this.heartbeatTimer = null
     /** @type{number | null} */
-    this.heartbeatSentAt = null;
+    this.heartbeatSentAt = null
     /** @type{?string} */
-    this.pendingHeartbeatRef = null;
+    this.pendingHeartbeatRef = null
     /** @type{Timer} */
     this.reconnectTimer = new Timer(() => {
-      if (this.pageHidden) {
-        this.log("Not reconnecting as page is hidden!");
-        this.teardown();
-        return;
+      if(this.pageHidden){
+        this.log("Not reconnecting as page is hidden!")
+        this.teardown()
+        return
       }
 
       this.teardown(async () => {
-        if (opts.beforeReconnect) await opts.beforeReconnect();
-        this.connect();
-      });
-    }, this.reconnectAfterMs);
+        if(opts.beforeReconnect) await opts.beforeReconnect()
+        this.connect()
+      })
+    }, this.reconnectAfterMs)
     /** @type{string | undefined} */
-    this.authToken = opts.authToken;
+    this.authToken = opts.authToken
   }
 
   /**
    * Returns the LongPoll transport reference
    */
-  getLongPollTransport() {
-    return LongPoll;
+  getLongPollTransport(){
+    return LongPoll
   }
 
   /**
@@ -188,16 +188,16 @@ export default class Socket {
    * @param {SocketTransport} newTransport - The new transport class to instantiate
    *
    */
-  replaceTransport(newTransport) {
-    this.connectClock++;
-    this.closeWasClean = true;
-    clearTimeout(this.fallbackTimer);
-    this.reconnectTimer.reset();
-    if (this.conn) {
-      this.conn.close();
-      this.conn = null;
+  replaceTransport(newTransport){
+    this.connectClock++
+    this.closeWasClean = true
+    clearTimeout(this.fallbackTimer)
+    this.reconnectTimer.reset()
+    if(this.conn){
+      this.conn.close()
+      this.conn = null
     }
-    this.transport = newTransport;
+    this.transport = newTransport
   }
 
   /**
@@ -205,8 +205,8 @@ export default class Socket {
    *
    * @returns {"wss" | "ws"}
    */
-  protocol() {
-    return location.protocol.match(/^https/) ? "wss" : "ws";
+  protocol(){
+    return location.protocol.match(/^https/) ? "wss" : "ws"
   }
 
   /**
@@ -214,19 +214,19 @@ export default class Socket {
    *
    * @returns {string}
    */
-  endPointURL() {
+  endPointURL(){
     let uri = Ajax.appendParams(
       Ajax.appendParams(this.endPoint, this.params()),
-      { vsn: this.vsn },
-    );
-    if (uri.charAt(0) !== "/") {
-      return uri;
+      {vsn: this.vsn},
+    )
+    if(uri.charAt(0) !== "/"){
+      return uri
     }
-    if (uri.charAt(1) === "/") {
-      return `${this.protocol()}:${uri}`;
+    if(uri.charAt(1) === "/"){
+      return `${this.protocol()}:${uri}`
     }
 
-    return `${this.protocol()}://${location.host}${uri}`;
+    return `${this.protocol()}://${location.host}${uri}`
   }
 
   /**
@@ -238,20 +238,20 @@ export default class Socket {
    * @param {number} [code] - A status code for disconnection (Optional).
    * @param {string} [reason] - A textual description of the reason to disconnect. (Optional)
    */
-  disconnect(callback, code, reason) {
-    this.connectClock++;
-    this.disconnecting = true;
-    this.closeWasClean = true;
-    clearTimeout(this.fallbackTimer);
-    this.reconnectTimer.reset();
+  disconnect(callback, code, reason){
+    this.connectClock++
+    this.disconnecting = true
+    this.closeWasClean = true
+    clearTimeout(this.fallbackTimer)
+    this.reconnectTimer.reset()
     this.teardown(
       () => {
-        this.disconnecting = false;
-        callback && callback();
+        this.disconnecting = false
+        callback && callback()
       },
       code,
       reason,
-    );
+    )
   }
 
   /**
@@ -260,21 +260,21 @@ export default class Socket {
    * Passing params to connect is deprecated; pass them in the Socket constructor instead:
    * `new Socket("/socket", {params: {user_id: userToken}})`.
    */
-  connect(params) {
-    if (params) {
+  connect(params){
+    if(params){
       console &&
         console.log(
           "passing params to connect is deprecated. Instead pass :params to the Socket constructor",
-        );
-      this.params = closure(params);
+        )
+      this.params = closure(params)
     }
-    if (this.conn && !this.disconnecting) {
-      return;
+    if(this.conn && !this.disconnecting){
+      return
     }
-    if (this.longPollFallbackMs && this.transport !== LongPoll) {
-      this.connectWithFallback(LongPoll, this.longPollFallbackMs);
+    if(this.longPollFallbackMs && this.transport !== LongPoll){
+      this.connectWithFallback(LongPoll, this.longPollFallbackMs)
     } else {
-      this.transportConnect();
+      this.transportConnect()
     }
   }
 
@@ -284,15 +284,15 @@ export default class Socket {
    * @param {string} msg
    * @param {Object} data
    */
-  log(kind, msg, data) {
-    this.logger && this.logger(kind, msg, data);
+  log(kind, msg, data){
+    this.logger && this.logger(kind, msg, data)
   }
 
   /**
    * Returns true if a logger has been set on this socket.
    */
-  hasLogger() {
-    return this.logger !== null;
+  hasLogger(){
+    return this.logger !== null
   }
 
   /**
@@ -302,10 +302,10 @@ export default class Socket {
    *
    * @param {SocketOnOpen} callback
    */
-  onOpen(callback) {
-    let ref = this.makeRef();
-    this.stateChangeCallbacks.open.push([ref, callback]);
-    return ref;
+  onOpen(callback){
+    let ref = this.makeRef()
+    this.stateChangeCallbacks.open.push([ref, callback])
+    return ref
   }
 
   /**
@@ -313,10 +313,10 @@ export default class Socket {
    * @param {SocketOnClose} callback
    * @returns {string}
    */
-  onClose(callback) {
-    let ref = this.makeRef();
-    this.stateChangeCallbacks.close.push([ref, callback]);
-    return ref;
+  onClose(callback){
+    let ref = this.makeRef()
+    this.stateChangeCallbacks.close.push([ref, callback])
+    return ref
   }
 
   /**
@@ -327,10 +327,10 @@ export default class Socket {
    * @param {SocketOnError} callback
    * @returns {string}
    */
-  onError(callback) {
-    let ref = this.makeRef();
-    this.stateChangeCallbacks.error.push([ref, callback]);
-    return ref;
+  onError(callback){
+    let ref = this.makeRef()
+    this.stateChangeCallbacks.error.push([ref, callback])
+    return ref
   }
 
   /**
@@ -338,10 +338,10 @@ export default class Socket {
    * @param {SocketOnMessage} callback
    * @returns {string}
    */
-  onMessage(callback) {
-    let ref = this.makeRef();
-    this.stateChangeCallbacks.message.push([ref, callback]);
-    return ref;
+  onMessage(callback){
+    let ref = this.makeRef()
+    this.stateChangeCallbacks.message.push([ref, callback])
+    return ref
   }
 
   /**
@@ -349,8 +349,8 @@ export default class Socket {
    * Useful for instrumenting connection health (e.g. sent/ok/timeout/disconnected).
    * @param {HeartbeatCallback} callback
    */
-  onHeartbeat(callback) {
-    this.heartbeatCallback = callback;
+  onHeartbeat(callback){
+    this.heartbeatCallback = callback
   }
 
   /**
@@ -359,20 +359,20 @@ export default class Socket {
    *
    * Returns true if the ping was pushed or false if unable to be pushed.
    */
-  ping(callback) {
-    if (!this.isConnected()) {
-      return false;
+  ping(callback){
+    if(!this.isConnected()){
+      return false
     }
-    let ref = this.makeRef();
-    let startTime = Date.now();
-    this.push({ topic: "phoenix", event: "heartbeat", payload: {}, ref: ref });
+    let ref = this.makeRef()
+    let startTime = Date.now()
+    this.push({topic: "phoenix", event: "heartbeat", payload: {}, ref: ref})
     let onMsgRef = this.onMessage((msg) => {
-      if (msg.ref === ref) {
-        this.off([onMsgRef]);
-        callback(Date.now() - startTime);
+      if(msg.ref === ref){
+        this.off([onMsgRef])
+        callback(Date.now() - startTime)
       }
-    });
-    return true;
+    })
+    return true
   }
 
   /**
@@ -380,306 +380,306 @@ export default class Socket {
    *
    * @param {Function}
    */
-  transportName(transport) {
+  transportName(transport){
     // JavaScript minification, enabled by default in production in Phoenix
     // projects, renames symbols to reduce code size.
     // See https://esbuild.github.io/api/#keep-names.
     // This helper ensures we return the correct name for the LongPoll transport
     // even after minification. The other common transport is WebSocket, which
     // is native to browsers and does not need special handling.
-    switch (transport) {
+    switch(transport){
       case LongPoll:
-        return "LongPoll";
+        return "LongPoll"
       default:
-        return transport.name;
+        return transport.name
     }
   }
 
   /**
    * @private
    */
-  transportConnect() {
-    this.connectClock++;
-    this.closeWasClean = false;
-    let protocols = undefined;
+  transportConnect(){
+    this.connectClock++
+    this.closeWasClean = false
+    let protocols = undefined
     // Sec-WebSocket-Protocol based token
     // (longpoll uses Authorization header instead)
-    if (this.authToken) {
+    if(this.authToken){
       protocols = [
         "phoenix",
         `${AUTH_TOKEN_PREFIX}${btoa(this.authToken).replace(/=/g, "")}`,
-      ];
+      ]
     }
-    this.conn = new this.transport(this.endPointURL(), protocols);
-    this.conn.binaryType = this.binaryType;
-    this.conn.timeout = this.longpollerTimeout;
-    this.conn.onopen = () => this.onConnOpen();
-    this.conn.onerror = (error) => this.onConnError(error);
-    this.conn.onmessage = (event) => this.onConnMessage(event);
-    this.conn.onclose = (event) => this.onConnClose(event);
+    this.conn = new this.transport(this.endPointURL(), protocols)
+    this.conn.binaryType = this.binaryType
+    this.conn.timeout = this.longpollerTimeout
+    this.conn.onopen = () => this.onConnOpen()
+    this.conn.onerror = (error) => this.onConnError(error)
+    this.conn.onmessage = (event) => this.onConnMessage(event)
+    this.conn.onclose = (event) => this.onConnClose(event)
   }
 
-  getSession(key) {
-    return this.sessionStore && this.sessionStore.getItem(key);
+  getSession(key){
+    return this.sessionStore && this.sessionStore.getItem(key)
   }
 
-  storeSession(key, val) {
-    this.sessionStore && this.sessionStore.setItem(key, val);
+  storeSession(key, val){
+    this.sessionStore && this.sessionStore.setItem(key, val)
   }
 
-  connectWithFallback(fallbackTransport, fallbackThreshold = 2500) {
-    clearTimeout(this.fallbackTimer);
-    let established = false;
-    let primaryTransport = true;
-    let openRef, errorRef;
-    let fallbackTransportName = this.transportName(fallbackTransport);
+  connectWithFallback(fallbackTransport, fallbackThreshold = 2500){
+    clearTimeout(this.fallbackTimer)
+    let established = false
+    let primaryTransport = true
+    let openRef, errorRef
+    let fallbackTransportName = this.transportName(fallbackTransport)
     let fallback = (reason) => {
       this.log(
         "transport",
         `falling back to ${fallbackTransportName}...`,
         reason,
-      );
-      this.off([openRef, errorRef]);
-      primaryTransport = false;
-      this.replaceTransport(fallbackTransport);
-      this.transportConnect();
-    };
-    if (this.getSession(`phx:fallback:${fallbackTransportName}`)) {
-      return fallback("memorized");
+      )
+      this.off([openRef, errorRef])
+      primaryTransport = false
+      this.replaceTransport(fallbackTransport)
+      this.transportConnect()
+    }
+    if(this.getSession(`phx:fallback:${fallbackTransportName}`)){
+      return fallback("memorized")
     }
 
-    this.fallbackTimer = setTimeout(fallback, fallbackThreshold);
+    this.fallbackTimer = setTimeout(fallback, fallbackThreshold)
 
     errorRef = this.onError((reason) => {
-      this.log("transport", "error", reason);
-      if (primaryTransport && !established) {
-        clearTimeout(this.fallbackTimer);
-        fallback(reason);
+      this.log("transport", "error", reason)
+      if(primaryTransport && !established){
+        clearTimeout(this.fallbackTimer)
+        fallback(reason)
       }
-    });
-    if (this.fallbackRef) {
-      this.off([this.fallbackRef]);
+    })
+    if(this.fallbackRef){
+      this.off([this.fallbackRef])
     }
     this.fallbackRef = this.onOpen(() => {
-      established = true;
-      if (!primaryTransport) {
-        let fallbackTransportName = this.transportName(fallbackTransport);
+      established = true
+      if(!primaryTransport){
+        let fallbackTransportName = this.transportName(fallbackTransport)
         // only memorize LP if we never connected to primary
-        if (!this.primaryPassedHealthCheck) {
-          this.storeSession(`phx:fallback:${fallbackTransportName}`, "true");
+        if(!this.primaryPassedHealthCheck){
+          this.storeSession(`phx:fallback:${fallbackTransportName}`, "true")
         }
         return this.log(
           "transport",
           `established ${fallbackTransportName} fallback`,
-        );
+        )
       }
       // if we've established primary, give the fallback a new period to attempt ping
-      clearTimeout(this.fallbackTimer);
-      this.fallbackTimer = setTimeout(fallback, fallbackThreshold);
+      clearTimeout(this.fallbackTimer)
+      this.fallbackTimer = setTimeout(fallback, fallbackThreshold)
       this.ping((rtt) => {
-        this.log("transport", "connected to primary after", rtt);
-        this.primaryPassedHealthCheck = true;
-        clearTimeout(this.fallbackTimer);
-      });
-    });
-    this.transportConnect();
+        this.log("transport", "connected to primary after", rtt)
+        this.primaryPassedHealthCheck = true
+        clearTimeout(this.fallbackTimer)
+      })
+    })
+    this.transportConnect()
   }
 
-  clearHeartbeats() {
-    clearTimeout(this.heartbeatTimer);
-    clearTimeout(this.heartbeatTimeoutTimer);
+  clearHeartbeats(){
+    clearTimeout(this.heartbeatTimer)
+    clearTimeout(this.heartbeatTimeoutTimer)
   }
 
-  onConnOpen() {
-    if (this.hasLogger())
-      this.log("transport", `connected to ${this.endPointURL()}`);
-    this.closeWasClean = false;
-    this.disconnecting = false;
-    this.establishedConnections++;
-    this.flushSendBuffer();
-    this.reconnectTimer.reset();
-    if (this.autoSendHeartbeat) {
-      this.resetHeartbeat();
+  onConnOpen(){
+    if(this.hasLogger())
+      this.log("transport", `connected to ${this.endPointURL()}`)
+    this.closeWasClean = false
+    this.disconnecting = false
+    this.establishedConnections++
+    this.flushSendBuffer()
+    this.reconnectTimer.reset()
+    if(this.autoSendHeartbeat){
+      this.resetHeartbeat()
     }
-    this.triggerStateCallbacks("open");
+    this.triggerStateCallbacks("open")
   }
 
   /**
    * @private
    */
 
-  heartbeatTimeout() {
-    if (this.pendingHeartbeatRef) {
-      this.pendingHeartbeatRef = null;
-      this.heartbeatSentAt = null;
-      if (this.hasLogger()) {
+  heartbeatTimeout(){
+    if(this.pendingHeartbeatRef){
+      this.pendingHeartbeatRef = null
+      this.heartbeatSentAt = null
+      if(this.hasLogger()){
         this.log(
           "transport",
           "heartbeat timeout. Attempting to re-establish connection",
-        );
+        )
       }
       try {
-        this.heartbeatCallback("timeout");
-      } catch (e) {
-        this.log("error", "error in heartbeat callback", e);
+        this.heartbeatCallback("timeout")
+      } catch (e){
+        this.log("error", "error in heartbeat callback", e)
       }
-      this.triggerChanError();
-      this.closeWasClean = false;
+      this.triggerChanError()
+      this.closeWasClean = false
       this.teardown(
         () => this.reconnectTimer.scheduleTimeout(),
         WS_CLOSE_NORMAL,
         "heartbeat timeout",
-      );
+      )
     }
   }
 
-  resetHeartbeat() {
-    if (this.conn && this.conn.skipHeartbeat) {
-      return;
+  resetHeartbeat(){
+    if(this.conn && this.conn.skipHeartbeat){
+      return
     }
-    this.pendingHeartbeatRef = null;
-    this.clearHeartbeats();
+    this.pendingHeartbeatRef = null
+    this.clearHeartbeats()
     this.heartbeatTimer = setTimeout(
       () => this.sendHeartbeat(),
       this.heartbeatIntervalMs,
-    );
+    )
   }
 
-  teardown(callback, code, reason) {
-    if (!this.conn) {
-      return callback && callback();
+  teardown(callback, code, reason){
+    if(!this.conn){
+      return callback && callback()
     }
-    let connectClock = this.connectClock;
+    let connectClock = this.connectClock
 
     this.waitForBufferDone(() => {
-      if (connectClock !== this.connectClock) {
-        return;
+      if(connectClock !== this.connectClock){
+        return
       }
-      if (this.conn) {
-        if (code) {
-          this.conn.close(code, reason || "");
+      if(this.conn){
+        if(code){
+          this.conn.close(code, reason || "")
         } else {
-          this.conn.close();
+          this.conn.close()
         }
       }
 
       this.waitForSocketClosed(() => {
-        if (connectClock !== this.connectClock) {
-          return;
+        if(connectClock !== this.connectClock){
+          return
         }
-        if (this.conn) {
-          this.conn.onopen = function () {}; // noop
-          this.conn.onerror = function () {}; // noop
-          this.conn.onmessage = function () {}; // noop
-          this.conn.onclose = function () {}; // noop
-          this.conn = null;
+        if(this.conn){
+          this.conn.onopen = function (){} // noop
+          this.conn.onerror = function (){} // noop
+          this.conn.onmessage = function (){} // noop
+          this.conn.onclose = function (){} // noop
+          this.conn = null
         }
 
-        callback && callback();
-      });
-    });
+        callback && callback()
+      })
+    })
   }
 
-  waitForBufferDone(callback, tries = 1) {
-    if (tries === 5 || !this.conn || !this.conn.bufferedAmount) {
-      callback();
-      return;
+  waitForBufferDone(callback, tries = 1){
+    if(tries === 5 || !this.conn || !this.conn.bufferedAmount){
+      callback()
+      return
     }
 
     setTimeout(() => {
-      this.waitForBufferDone(callback, tries + 1);
-    }, 150 * tries);
+      this.waitForBufferDone(callback, tries + 1)
+    }, 150 * tries)
   }
 
-  waitForSocketClosed(callback, tries = 1) {
-    if (
+  waitForSocketClosed(callback, tries = 1){
+    if(
       tries === 5 ||
       !this.conn ||
       this.conn.readyState === SOCKET_STATES.closed
-    ) {
-      callback();
-      return;
+    ){
+      callback()
+      return
     }
 
     setTimeout(() => {
-      this.waitForSocketClosed(callback, tries + 1);
-    }, 150 * tries);
+      this.waitForSocketClosed(callback, tries + 1)
+    }, 150 * tries)
   }
 
   /**
    * @param {CloseEvent} event
    */
-  onConnClose(event) {
-    if (this.conn) this.conn.onclose = () => {}; // noop to prevent recursive calls in teardown
-    if (this.hasLogger()) this.log("transport", "close", event);
-    this.triggerChanError();
-    this.clearHeartbeats();
-    if (!this.closeWasClean) {
-      this.reconnectTimer.scheduleTimeout();
+  onConnClose(event){
+    if(this.conn) this.conn.onclose = () => {} // noop to prevent recursive calls in teardown
+    if(this.hasLogger()) this.log("transport", "close", event)
+    this.triggerChanError()
+    this.clearHeartbeats()
+    if(!this.closeWasClean){
+      this.reconnectTimer.scheduleTimeout()
     }
-    this.triggerStateCallbacks("close", event);
+    this.triggerStateCallbacks("close", event)
   }
 
   /**
    * @private
    * @param {Event} error
    */
-  onConnError(error) {
-    if (this.hasLogger()) this.log("transport", error);
-    let transportBefore = this.transport;
-    let establishedBefore = this.establishedConnections;
+  onConnError(error){
+    if(this.hasLogger()) this.log("transport", error)
+    let transportBefore = this.transport
+    let establishedBefore = this.establishedConnections
     this.triggerStateCallbacks(
       "error",
       error,
       transportBefore,
       establishedBefore,
-    );
-    if (transportBefore === this.transport || establishedBefore > 0) {
-      this.triggerChanError();
+    )
+    if(transportBefore === this.transport || establishedBefore > 0){
+      this.triggerChanError()
     }
   }
 
   /**
    * @private
    */
-  triggerChanError() {
+  triggerChanError(){
     this.channels.forEach((channel) => {
-      if (!(channel.isErrored() || channel.isLeaving() || channel.isClosed())) {
-        channel.trigger(CHANNEL_EVENTS.error);
+      if(!(channel.isErrored() || channel.isLeaving() || channel.isClosed())){
+        channel.trigger(CHANNEL_EVENTS.error)
       }
-    });
+    })
   }
 
   /**
    * @returns {string}
    */
-  connectionState() {
-    switch (this.conn && this.conn.readyState) {
+  connectionState(){
+    switch(this.conn && this.conn.readyState){
       case SOCKET_STATES.connecting:
-        return "connecting";
+        return "connecting"
       case SOCKET_STATES.open:
-        return "open";
+        return "open"
       case SOCKET_STATES.closing:
-        return "closing";
+        return "closing"
       default:
-        return "closed";
+        return "closed"
     }
   }
 
   /**
    * @returns {boolean}
    */
-  isConnected() {
-    return this.connectionState() === "open";
+  isConnected(){
+    return this.connectionState() === "open"
   }
 
   /**
    *
    * @param {Channel} channel
    */
-  remove(channel) {
-    this.off(channel.stateChangeRefs);
-    this.channels = this.channels.filter((c) => c !== channel);
+  remove(channel){
+    this.off(channel.stateChangeRefs)
+    this.channels = this.channels.filter((c) => c !== channel)
   }
 
   /**
@@ -688,13 +688,13 @@ export default class Socket {
    * @param {string[]} refs - list of refs returned by calls to
    *                 `onOpen`, `onClose`, `onError,` and `onMessage`
    */
-  off(refs) {
-    for (let key in this.stateChangeCallbacks) {
+  off(refs){
+    for(let key in this.stateChangeCallbacks){
       this.stateChangeCallbacks[key] = this.stateChangeCallbacks[key].filter(
         ([ref]) => {
-          return refs.indexOf(ref) === -1;
+          return refs.indexOf(ref) === -1
         },
-      );
+      )
     }
   }
 
@@ -705,27 +705,27 @@ export default class Socket {
    * @param {Params | (() => Params)} [chanParams]- Parameters for the channel
    * @returns {Channel}
    */
-  channel(topic, chanParams = {}) {
-    let chan = new Channel(topic, chanParams, this);
-    this.channels.push(chan);
-    return chan;
+  channel(topic, chanParams = {}){
+    let chan = new Channel(topic, chanParams, this)
+    this.channels.push(chan)
+    return chan
   }
 
   /**
    * @param {Message<Record<string, any>>} data
    */
-  push(data) {
-    if (this.hasLogger()) {
-      let { topic, event, payload, ref, join_ref } = data;
-      this.log("push", `${topic} ${event} (${join_ref}, ${ref})`, payload);
+  push(data){
+    if(this.hasLogger()){
+      let {topic, event, payload, ref, join_ref} = data
+      this.log("push", `${topic} ${event} (${join_ref}, ${ref})`, payload)
     }
 
-    if (this.isConnected()) {
-      this.encode(data, (result) => this.conn.send(result));
+    if(this.isConnected()){
+      this.encode(data, (result) => this.conn.send(result))
     } else {
       this.sendBuffer.push(() =>
         this.encode(data, (result) => this.conn.send(result)),
-      );
+      )
     }
   }
 
@@ -733,102 +733,102 @@ export default class Socket {
    * Return the next message ref, accounting for overflows
    * @returns {string}
    */
-  makeRef() {
-    let newRef = this.ref + 1;
-    if (newRef === this.ref) {
-      this.ref = 0;
+  makeRef(){
+    let newRef = this.ref + 1
+    if(newRef === this.ref){
+      this.ref = 0
     } else {
-      this.ref = newRef;
+      this.ref = newRef
     }
 
-    return this.ref.toString();
+    return this.ref.toString()
   }
 
-  sendHeartbeat() {
-    if (!this.isConnected()) {
+  sendHeartbeat(){
+    if(!this.isConnected()){
       try {
-        this.heartbeatCallback("disconnected");
-      } catch (e) {
-        this.log("error", "error in heartbeat callback", e);
+        this.heartbeatCallback("disconnected")
+      } catch (e){
+        this.log("error", "error in heartbeat callback", e)
       }
-      return;
+      return
     }
-    if (this.pendingHeartbeatRef) {
-      this.heartbeatTimeout();
-      return;
+    if(this.pendingHeartbeatRef){
+      this.heartbeatTimeout()
+      return
     }
-    this.pendingHeartbeatRef = this.makeRef();
-    this.heartbeatSentAt = Date.now();
+    this.pendingHeartbeatRef = this.makeRef()
+    this.heartbeatSentAt = Date.now()
     this.push({
       topic: "phoenix",
       event: "heartbeat",
       payload: {},
       ref: this.pendingHeartbeatRef,
-    });
+    })
     try {
-      this.heartbeatCallback("sent");
-    } catch (e) {
-      this.log("error", "error in heartbeat callback", e);
+      this.heartbeatCallback("sent")
+    } catch (e){
+      this.log("error", "error in heartbeat callback", e)
     }
     this.heartbeatTimeoutTimer = setTimeout(
       () => this.heartbeatTimeout(),
       this.heartbeatIntervalMs,
-    );
+    )
   }
 
-  flushSendBuffer() {
-    if (this.isConnected() && this.sendBuffer.length > 0) {
-      this.sendBuffer.forEach((callback) => callback());
-      this.sendBuffer = [];
+  flushSendBuffer(){
+    if(this.isConnected() && this.sendBuffer.length > 0){
+      this.sendBuffer.forEach((callback) => callback())
+      this.sendBuffer = []
     }
   }
 
   /**
    * @param {MessageEvent<any>} rawMessage
    */
-  onConnMessage(rawMessage) {
+  onConnMessage(rawMessage){
     this.decode(rawMessage.data, (msg) => {
-      let { topic, event, payload, ref, join_ref } = msg;
-      if (ref && ref === this.pendingHeartbeatRef) {
+      let {topic, event, payload, ref, join_ref} = msg
+      if(ref && ref === this.pendingHeartbeatRef){
         const latency = this.heartbeatSentAt
           ? Date.now() - this.heartbeatSentAt
-          : undefined;
-        this.clearHeartbeats();
+          : undefined
+        this.clearHeartbeats()
         try {
           this.heartbeatCallback(
             payload.status === "ok" ? "ok" : "error",
             latency,
-          );
-        } catch (e) {
-          this.log("error", "error in heartbeat callback", e);
+          )
+        } catch (e){
+          this.log("error", "error in heartbeat callback", e)
         }
-        this.pendingHeartbeatRef = null;
-        this.heartbeatSentAt = null;
-        if (this.autoSendHeartbeat) {
+        this.pendingHeartbeatRef = null
+        this.heartbeatSentAt = null
+        if(this.autoSendHeartbeat){
           this.heartbeatTimer = setTimeout(
             () => this.sendHeartbeat(),
             this.heartbeatIntervalMs,
-          );
+          )
         }
       }
 
-      if (this.hasLogger())
+      if(this.hasLogger())
         this.log(
           "receive",
           `${payload.status || ""} ${topic} ${event} ${(ref && "(" + ref + ")") || ""}`.trim(),
           payload,
-        );
+        )
 
-      for (let i = 0; i < this.channels.length; i++) {
-        const channel = this.channels[i];
-        if (!channel.isMember(topic, event, payload, join_ref)) {
-          continue;
+      for(let i = 0; i < this.channels.length; i++){
+        const channel = this.channels[i]
+        if(!channel.isMember(topic, event, payload, join_ref)){
+          continue
         }
-        channel.trigger(event, payload, ref, join_ref);
+        channel.trigger(event, payload, ref, join_ref)
       }
 
-      this.triggerStateCallbacks("message", msg);
-    });
+      this.triggerStateCallbacks("message", msg)
+    })
   }
 
   /**
@@ -838,28 +838,28 @@ export default class Socket {
    * @param {...Parameters<SocketStateChangeCallbacks[K][number][1]>} args
    * @returns {void}
    */
-  triggerStateCallbacks(event, ...args) {
+  triggerStateCallbacks(event, ...args){
     try {
       this.stateChangeCallbacks[event].forEach(([_, callback]) => {
         try {
-          callback(...args);
-        } catch (e) {
-          this.log("error", `error in ${event} callback`, e);
+          callback(...args)
+        } catch (e){
+          this.log("error", `error in ${event} callback`, e)
         }
-      });
-    } catch (e) {
-      this.log("error", `error triggering ${event} callbacks`, e);
+      })
+    } catch (e){
+      this.log("error", `error triggering ${event} callbacks`, e)
     }
   }
 
-  leaveOpenTopic(topic) {
+  leaveOpenTopic(topic){
     let dupChannel = this.channels.find(
       (c) => c.topic === topic && (c.isJoined() || c.isJoining()),
-    );
-    if (dupChannel) {
-      if (this.hasLogger())
-        this.log("transport", `leaving duplicate topic "${topic}"`);
-      dupChannel.leave();
+    )
+    if(dupChannel){
+      if(this.hasLogger())
+        this.log("transport", `leaving duplicate topic "${topic}"`)
+      dupChannel.leave()
     }
   }
 }
